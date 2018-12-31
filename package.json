@@ -1,0 +1,17 @@
+{
+  "name": "create-react-component",
+  "version": "1.0.0",
+  "description": "CLI tool to create react component fastly",
+  "main": "index.js",
+  "author": "zougui",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^2.4.1",
+    "commander": "^2.19.0",
+    "shelljs": "^0.8.3"
+  },
+  "bin": {
+    "crc": "./cli/index.js"
+  },
+  "private": true
+}
