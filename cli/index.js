@@ -44,7 +44,7 @@ const actions = () => new Promise((resolve, reject) => {
   if(program.t) resolve();
   // we need to find the full command, but the 2 first values in the array are not from the user
 
-  if(component) createComponents(component).then(resolve).catch(reject);
+  if(component) createComponents(component, command).then(resolve).catch(reject);
   else if(program.init) init(command);
   else {
     reject(`"${command}" is not a valid command.`);

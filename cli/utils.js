@@ -1,5 +1,6 @@
 const fs = require('fs');
 const chalk = require('chalk')
+const structures = require('./structures');
 
 const upperCaseFirst = string => {
   return string.charAt(0).toUpperCase() + string.substr(1);
@@ -53,7 +54,7 @@ exports.isConfigValid = (config, reject) => {
 }
 
 exports.createFile = options => new Promise((resolve, reject) => {
-  let { creationPath, readFilePath, componentName, mDS, structure, filesPosition, fileType } = options;
+  let { creationPath, readFilePath, componentName, mDS, structure, filesPosition, fileType, configCLI } = options;
   const componentInFolder = new RegExp(`${componentName}/${componentName}`, 'i');
   // if the file is created in a folder that has the same name, we want the file to be named index
   creationPath = creationPath.replace(componentInFolder, `${componentName}/index`);
@@ -72,7 +73,7 @@ exports.createFile = options => new Promise((resolve, reject) => {
 
     let content = fs.readFileSync(readFilePath).toString(); // get a string of the template
     content = content.replace(/_component_/g, componentName);
-    if(!mDS) content = content
+    if(configCLI.mDS === false || !mDS) content = content
       .replace(/import { mapDynamicState } from 'map-dynamic-state';/g, '')
       .replace(/mapDynamicState\('reducerName: prop'\);/, 'state => ({\n\n});\n');
 
@@ -87,7 +88,7 @@ exports.createFile = options => new Promise((resolve, reject) => {
 });
 
 const findRelativePath = (from, to, options, content) => {
-  const { structure, filesPosition, creationPath, componentName, style, fileType } = options;
+  const { structure, filesPosition, creationPath, componentName, style, fileType, configCLI } = options;
   const toFilePosition = filesPosition[to];
   const fromFilePosition = filesPosition[from];
   const { parents: toParents, folder: toFolder } = toFilePosition;
@@ -114,7 +115,7 @@ const findRelativePath = (from, to, options, content) => {
           .split(_toParents[0])[0]
           .replace(fromParents.join('/') || fromFolder, toParents.join('/') || toFolder), true);
         path = `${path}${creationPathWithoutConfiguredStructure}`;
-        if(_toParents.length > 0 && howManyFile(structure, _toParents) > 1) path += `/${componentName}`;
+        if(_toParents.length > 0 && howManyFile(structures[configCLI.structure] || structure, _toParents) > 1) path += `/${componentName}`;
       }
       condition = false;
     }
@@ -126,7 +127,7 @@ const findRelativePath = (from, to, options, content) => {
     content = content.replace(/'\.\/'/, '\'./index.interface\'');
   } else if(fileType !== 'component' && fileType !== 'style') {
     const { parents } = filesPosition[fileType];
-    if(parents.length > 0 && howManyFile(structure, parents) > 1) {
+    if(parents.length > 0 && howManyFile(structures[configCLI.structure] || structure, parents) > 1) {
       content = content.replace(new RegExp(`/${componentName}`, 'i'), `/${componentName}/index.${fileType}`);
     }
   }
@@ -150,3 +151,41 @@ const structureNavigation = (object, arr) => {
   newArr.shift();
   return structureNavigation(newObj, newArr || []);
 }
+
+const getOptionValue = (command, wantedOption, defaultVal, trueIfExists) => {
+  const option = new RegExp(`--${wantedOption}(=.)?`, 'i');
+  let optionValue;
+  if(option.test(command)) {
+    if(trueIfExists) optionValue = true;
+    command.split(' ').forEach(arg => {
+      if(option.test(arg)) optionValue = arg.split('=')[1];
+    });
+  }
+  if(defaultVal !== null && defaultVal !== undefined) optionValue = optionValue || defaultVal;
+  if(typeof optionValue === 'string') optionValue = optionValue.toLowerCase();
+  return optionValue;
+}
+
+const getConfigFromCommand = command => {
+  const scriptsType = getOptionValue(command, 'tsx', null, true) && 'tsx';
+  const tests = getOptionValue(command, 'tests', null, true);
+  const mDS = getOptionValue(command, 'MDS', null, true);
+  const style = getOptionValue(command, 'style', null);
+  const choosenStructure = getOptionValue(command, 'structure');
+  const structure = structures[choosenStructure];
+  const config = {};
+
+  if(scriptsType) config.scriptsType = scriptsType;
+  // the value can be a string, so we parse it to get either true or false, or string if the value is wrong
+  // but we only want a boolean
+  if(typeof JSON.parse(tests) === 'boolean') config.tests = JSON.parse(tests);
+  if(typeof JSON.parse(mDS) === 'boolean') config.mDS = JSON.parse(mDS);
+  if(style) config.style = style;
+  if(structure) config.structure = structure;
+  console.log(config.structure)
+
+  return config;
+}
+
+exports.getOptionValue = getOptionValue;
+exports.getConfigFromCommand = getConfigFromCommand;

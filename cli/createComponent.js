@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { pascalCasify, getPreviousDir, createFile, getConfig, isConfigValid } = require('./utils');
+const { pascalCasify, getPreviousDir, createFile, getConfig, isConfigValid, getConfigFromCommand } = require('./utils');
 const createFolder = require('./create-folder');
 
 // all the pre-defined file type
@@ -59,22 +59,23 @@ const findAllFilesPosition = structure => new Promise((resolve, reject) => {
   });
 });
 
-module.exports = component => new Promise((resolve, reject) => {
+module.exports = (component, command) => new Promise((resolve, reject) => {
+  const configCLI = getConfigFromCommand(command);
   let files = ['style', 'component']; // this contains all the files type that are going to be created
   const config = getConfig();
   isConfigValid(config, reject); // if the config is invalid we do not want to continue
   const { structure, style } = config;
-  findAllFilesPosition(structure)
+  findAllFilesPosition(configCLI.structure || structure)
     .then(filesPosition => {
       component.name = component.name.replace(/\\/g, '/');
       component.name = /src\/components/.test(component.name)
         ? component.name
         : `src/components/${component.name}`;
 
-      if(config.tests === true) files.push('test');
+      if(configCLI.tests !== false && config.tests === true) files.push('test');
       // contains is defined only if the value is an array (e.g. "component": ["component", "container"])
       if(!filesPosition.container.contains) files.push('container');
-      if(config.scriptsType === 'tsx' && !filesPosition.interface.contains) files.push('interface');
+      if(configCLI.scriptsType !== 'jsx' && config.scriptsType === 'tsx' && !filesPosition.interface.contains) files.push('interface');
 
       const options = {
         componentType: component.type,
@@ -83,6 +84,7 @@ module.exports = component => new Promise((resolve, reject) => {
         structure,
         filesPosition,
         style,
+        configCLI,
       };
       creation(component.name, options, files).then(resolve).catch(reject);
     })
@@ -99,7 +101,7 @@ const creation = (componentName, options, files) => new Promise((resolve, reject
 });
 
 const createComponent = (path, options) => {
-  const { fileType, mDS, structure, filesPosition, style } = options;
+  const { fileType, mDS, structure, filesPosition, style, configCLI } = options;
   path = correctPath(path, options); // find the correct path where the file will be created
   let pathParts = path.split(/[/\\]/);
   const componentName = pascalCasify(/index/i.test(pathParts[pathParts.length - 1])
@@ -124,6 +126,7 @@ const createComponent = (path, options) => {
     structure,
     filesPosition,
     style,
+    configCLI,
   };
   return new Promise((resolve, reject) => {
     fs.exists(previousDir, exists => {
@@ -147,16 +150,16 @@ const correctPath = (path, options) => {
 }
 
 const getTemplatePath = options => {
-  let { componentType, scriptsType, fileType, filesPosition } = options;
+  let { componentType, scriptsType, fileType, filesPosition, configCLI } = options;
 
   let path;
   if(fileType === 'style') return 'style';
-  path = scriptsType;
+  path = configCLI.scriptsType || scriptsType;
   if(fileType === 'test') return `${path}/test`;
 
   const { contains } = filesPosition[fileType];
   if(inArray('component', contains) && inArray('container', contains) && inArray('interface', contains)) path += '/all';
-  else if(scriptsType === 'jsx' || fileType === 'component') path += '/components';
+  else if(configCLI.scriptsType === 'tsx' || scriptsType === 'jsx' || fileType === 'component') path += '/components';
   else if(fileType === 'interface') path += '/interfaces';
   else if(fileType === 'container') return `${path}/container`;
 
@@ -166,10 +169,10 @@ const getTemplatePath = options => {
 }
 
 const getExt = options => {
-  const { scriptsType, fileType, style } = options;
+  const { scriptsType, fileType, style, configCLI } = options;
   let ext;
-  if(fileType === 'style') ext = style;
-  else if(scriptsType === 'jsx') ext = 'js';
+  if(fileType === 'style') ext = configCLI.style || style;
+  else if(configCLI.scriptsType === 'jsx' || scriptsType === 'jsx') ext = 'js';
   else ext = 'tsx';
 
   return ext;

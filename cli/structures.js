@@ -16,7 +16,7 @@ module.exports = {
       test: 'test'
     }
   },
-  strictSeparation: {
+  strictseparation: {
     components: 'component',
     containers: 'container',
     interfaces: 'interface',
