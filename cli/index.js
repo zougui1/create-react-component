@@ -41,6 +41,7 @@ const actions = () => new Promise((resolve, reject) => {
   rawArgs.shift();
   rawArgs.shift();
   const command = rawArgs.join(' ');
+  if(program.t) resolve();
   // we need to find the full command, but the 2 first values in the array are not from the user
 
   if(component) createComponents(component).then(resolve).catch(reject);
@@ -62,6 +63,17 @@ const getComponent = () => {
 actions()
   .then(() => console.log(success('The component has been created')))
   .catch(err => {
-    console.log(error(err));
+    displayErrors(err);
     console.log(error('Use "crc --help" if you need help.'));
   });
+
+
+const displayErrors = errors => {
+  if(Array.isArray(errors)) {
+    errors.forEach(err => {
+      if(Array.isArray(err)) mapErrors(err);
+      else console.log(error(err));
+    });
+  }
+  else console.log(error(errors));
+}

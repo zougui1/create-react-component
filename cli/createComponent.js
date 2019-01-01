@@ -21,7 +21,7 @@ const findFilePosition = (structure, search, parents = []) => new Promise((resol
       const element = structure[key];
       const currentPositions = {
         search,
-        folder: parents[parents.length-1] || key,
+        folder: parents[parents.length - 1] || key,
         parents,
       };
       if(element.constructor.name === 'Object') findFilePosition(element, search, [...parents, key]).then(resolve).catch(reject);
@@ -33,7 +33,7 @@ const findFilePosition = (structure, search, parents = []) => new Promise((resol
   }
 });
 
-// we sock the files position in an object and return it if there's the expected amount of data
+// we stock the files position in an object and return it if there's the expected amount of data
 const tempFilesPositionStore = expectingFilesPositionNumber => {
   let filesPositionNumber = 0;
   const filesPosition = {};
@@ -72,11 +72,9 @@ module.exports = component => new Promise((resolve, reject) => {
         : `src/components/${component.name}`;
 
       if(config.tests === true) files.push('test');
-      if(config.scriptsType === 'tsx') {
-        // contains is defined only if the value is an array (e.g. "component": ["component", "container"])
-        if(!filesPosition.interface.contains) files.push('interface');
-        if(!filesPosition.container.contains) files.push('container');
-      }
+      // contains is defined only if the value is an array (e.g. "component": ["component", "container"])
+      if(!filesPosition.container.contains) files.push('container');
+      if(config.scriptsType === 'tsx' && !filesPosition.interface.contains) files.push('interface');
 
       const options = {
         componentType: component.type,
@@ -102,16 +100,17 @@ const creation = (componentName, options, files) => new Promise((resolve, reject
 
 const createComponent = (path, options) => {
   const { fileType, mDS, structure, filesPosition, style } = options;
-  path = correctPath(path, options);
+  path = correctPath(path, options); // find the correct path where the file will be created
   let pathParts = path.split(/[/\\]/);
   const componentName = pascalCasify(/index/i.test(pathParts[pathParts.length - 1])
-                                      ? pathParts[pathParts.length - 2]
-                                      : pathParts[pathParts.length - 1]);
+    ? pathParts[pathParts.length - 2]
+    : pathParts[pathParts.length - 1]);
+
   const tempPath = `${getPreviousDir(__dirname, true)}/templates`;
-  const templatePath = getTemplatePath(options);
-  let ext = getExt(options);
+  const templatePath = getTemplatePath(options); // find the correct path to the template that will be used for the file
+  let ext = getExt(options); // find the correct extension
   let finalTemplatePath = `${tempPath}/${templatePath}`;
-  if(fileType !== 'style') finalTemplatePath += `.${ext}`;
+  if(fileType !== 'style') finalTemplatePath += `.${ext}`; // the style's template doesn't have an extension
   const previousDir = getPreviousDir(path);
   pathParts[pathParts.length - 1] = componentName;
   const creationPath = pathParts.join('/');
@@ -128,7 +127,7 @@ const createComponent = (path, options) => {
   };
   return new Promise((resolve, reject) => {
     fs.exists(previousDir, exists => {
-      if(!exists) createFolder(previousDir)
+      if(!exists) createFolder(previousDir) // if the folder where the file shall be created doesn't exist, we create it then create the file once it's done
         .then(() => createFile(createFileOptions).then(resolve).catch(reject))
         .catch(reject);
       else createFile(createFileOptions).then(resolve).catch(reject);
@@ -141,6 +140,7 @@ const correctPath = (path, options) => {
   let correctPath = path;
 
   const filePosition = filesPosition[fileType];
+  // filePosition doesn't necessary have parents, there's parents if there's 1+ nested structure
   correctPath = correctPath.replace('components', filePosition.parents.join('/') || filePosition.folder);
   if(filesPosition[fileType].parents.length > 0) correctPath += '/index';
   return correctPath;
@@ -160,7 +160,7 @@ const getTemplatePath = options => {
   else if(fileType === 'interface') path += '/interfaces';
   else if(fileType === 'container') return `${path}/container`;
 
-  if(!/container/.test(fileType) && componentType.charAt(0) === 'r' && scriptsType === 'tsx') componentType = componentType.substring(1);
+  componentType.substring(1);
   path += `/${componentType}-component`;
   return path;
 }

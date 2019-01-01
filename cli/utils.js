@@ -34,34 +34,43 @@ exports.getConfig = () => {
 }
 
 exports.isConfigValid = (config, reject) => {
-  if(config.constructor.name !== 'Object') reject('The CLI must be initialized');
-  else if(
-    !config.scriptsType ||
-    !/(j|t)sx/.test(config.scriptsType) ||
-    (config.tests === undefined || config.tests === null) ||
-    config.tests.constructor.name !== 'Boolean'
-  ) {
-    console.log(error('The config is wrong, it must contains:'));
-    console.log(error('scriptsType: "tsx" OR "jsx"'));
-    console.log(error('tests: true OR false'));
-    reject();
+  const { scriptsType, tests, style, structure } = config;
+  let errors = [];
+  if(config.constructor.name !== 'Object') errors.push('The CLI must be initialized');
+  if(!scriptsType || !/(j|t)sx/.test(scriptsType)) {
+    errors.push('The rule "scriptsType" is wrong, it must contains: "tsx" OR "jsx"');
   }
+  if(tests === undefined || tests === null || typeof tests !== 'boolean') {
+    errors.push('The rule "tests" is wrong, it must contains true OR false');
+  }
+  if(!style || typeof style !== 'string') {
+    errors.push('The rule "style" is wrong, it must contains a non-empty string');
+  }
+  if(!structure || structure.constructor.name !== 'Object') {
+    errors.push('The rule "structure" is wrong, it must be a literal object');
+  }
+  if(errors.length > 0) reject(errors);
 }
 
 exports.createFile = options => new Promise((resolve, reject) => {
   let { creationPath, readFilePath, componentName, mDS, structure, filesPosition, fileType } = options;
   const componentInFolder = new RegExp(`${componentName}/${componentName}`, 'i');
+  // if the file is created in a folder that has the same name, we want the file to be named index
   creationPath = creationPath.replace(componentInFolder, `${componentName}/index`);
   const { parents } = filesPosition[fileType];
-  if(parents.length > 0 && Object.keys(structureNavigation(structure, parents)).length > 1) {
-    if(fileType !== 'component' && fileType !== 'style') {
-      creationPath = creationPath.replace('index', `index.${fileType}`);
-    }
-  }
+  // if in the object where the file is located contains more than 1 file, we add it an extension
+  // otherwise it will throws an error because the file already exists
+  if(
+    parents.length > 0 &&
+    howManyFile(structure, parents) > 1 &&
+    fileType !== 'component' &&
+    fileType !== 'style'
+  ) creationPath = creationPath.replace('index', `index.${fileType}`);
+
   fs.open(creationPath, 'wx', err => {
     if(err) return reject(err);
 
-    let content = fs.readFileSync(readFilePath).toString();
+    let content = fs.readFileSync(readFilePath).toString(); // get a string of the template
     content = content.replace(/_component_/g, componentName);
     if(!mDS) content = content
       .replace(/import { mapDynamicState } from 'map-dynamic-state';/g, '')
@@ -85,31 +94,29 @@ const findRelativePath = (from, to, options, content) => {
   const { parents: fromParents, folder: fromFolder } = fromFilePosition;
   let path = '';
 
-  if((toParents.join('/') || toFolder) === (fromParents.join('/') || fromFolder)) {
-    path = './';
-  } else {
+  if((toParents.join('/') || toFolder) === (fromParents.join('/') || fromFolder)) path = './';
+  else {
+    // we want an array of the path after "src/"
     let creationRelativePath = creationPath.split('src/')[1];
-    let _toParents = [...toParents];
-    let _fromParents = [...fromParents];
+    let _toParents = [...toParents || toFolder];
+    let _fromParents = [...fromParents || fromFolder];
     let condition = true;
     while (condition) {
-      let everythingSame = false;
+      let everythingSame = false; // true if both are in the same nested object
       _toParents.forEach((element, i) => everythingSame = element === _fromParents[i]);
-      if(everythingSame) {
-        condition = false;
-        path = './';
-      } else {
+      if(everythingSame) path = './';
+      else {
         let creationRelativePathArr = getPreviousDir(creationRelativePath, true).split('/');
         for (let i = 0; i < creationRelativePathArr.length; i++) {
-          if(creationRelativePathArr[i] !== _toParents[i]) path += '../';
+           path += '../';
         }
         let creationPathWithoutConfiguredStructure = getPreviousDir(creationRelativePath
           .split(_toParents[0])[0]
           .replace(fromParents.join('/') || fromFolder, toParents.join('/') || toFolder), true);
         path = `${path}${creationPathWithoutConfiguredStructure}`;
-        if(Object.keys(structureNavigation(structure, _toParents)).length > 1) path += `/${componentName}`;
-        condition = false;
+        if(_toParents.length > 0 && howManyFile(structure, _toParents) > 1) path += `/${componentName}`;
       }
+      condition = false;
     }
   }
   content = content.replace(new RegExp(`_${from}To${to}_`, 'gi'), path);
@@ -119,11 +126,21 @@ const findRelativePath = (from, to, options, content) => {
     content = content.replace(/'\.\/'/, '\'./index.interface\'');
   } else if(fileType !== 'component' && fileType !== 'style') {
     const { parents } = filesPosition[fileType];
-    if(parents.length > 0 && Object.keys(structureNavigation(structure, parents)).length > 1) {
+    if(parents.length > 0 && howManyFile(structure, parents) > 1) {
       content = content.replace(new RegExp(`/${componentName}`, 'i'), `/${componentName}/index.${fileType}`);
     }
   }
   return content;
+}
+
+const howManyFile = (structure, parents) => {
+  const currentDir = structureNavigation(structure, parents);
+  let fileNumber = 0;
+  for(const key in currentDir) {
+    // only strings are counted as file
+    if(currentDir.hasOwnProperty(key) && typeof currentDir[key] === 'string') ++fileNumber;
+  }
+  return fileNumber;
 }
 
 const structureNavigation = (object, arr) => {
