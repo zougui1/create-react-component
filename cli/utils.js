@@ -59,23 +59,12 @@ exports.createFile = options => new Promise((resolve, reject) => {
       .replace(/import { mapDynamicState } from 'map-dynamic-state';/g, '')
       .replace(/mapDynamicState\('reducerName: prop'\);/, 'state => ({\n\n});\n');
 
-    const relativePathToFind = {
-      length: 0,
-      from: [],
-      to: []
-    };
-    content.replace(/(_.+To.+_)/gi, match => {
+    const regex = /(_.+To.+_)/gi;
+    const matches = content.match(regex);
+    if(Array.isArray(matches)) matches.forEach(match => {
       const [from, to] = match.split('_')[1].split(/To/i);
-      relativePathToFind.from.push(from.toLowerCase());
-      relativePathToFind.to.push(to.toLowerCase());
-      ++relativePathToFind.length;
-      return match;
+      content = findRelativePath(from.toLowerCase(), to.toLowerCase(), options, content);
     });
-    for (let i = 0; i < relativePathToFind.length; i++) {
-      const from = relativePathToFind.from[i];
-      const to = relativePathToFind.to[i];
-      content = findRelativePath(from, to, options, content);
-    }
 
     fs.writeFileSync(creationPath, content, 'utf-8', err => { if(err) return reject(err) });
     resolve();
