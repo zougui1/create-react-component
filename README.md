@@ -87,4 +87,4 @@ src
         MyComponent
           index.test.js => if tests are activated
 ```
-> note: "component", "container" and "style" are **required** in the structure, "test" is required if you use testing files and "interface" is required if your project is in tsx
+> note: "component", "container", "style", "interface" and "test" are all **required**

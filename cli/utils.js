@@ -34,27 +34,9 @@ exports.getConfig = () => {
   if(exists) return JSON.parse(fs.readFileSync(configPath));
 }
 
-exports.isConfigValid = (config, reject) => {
-  const { scriptsType, tests, style, structure } = config;
-  let errors = [];
-  if(config.constructor.name !== 'Object') errors.push('The CLI must be initialized');
-  if(!scriptsType || !/(j|t)sx/.test(scriptsType)) {
-    errors.push('The rule "scriptsType" is wrong, it must contains: "tsx" OR "jsx"');
-  }
-  if(tests === undefined || tests === null || typeof tests !== 'boolean') {
-    errors.push('The rule "tests" is wrong, it must contains true OR false');
-  }
-  if(!style || typeof style !== 'string') {
-    errors.push('The rule "style" is wrong, it must contains a non-empty string');
-  }
-  if(!structure || structure.constructor.name !== 'Object') {
-    errors.push('The rule "structure" is wrong, it must be a literal object');
-  }
-  if(errors.length > 0) reject(errors);
-}
-
 exports.createFile = options => new Promise((resolve, reject) => {
-  let { creationPath, readFilePath, componentName, mDS, structure, filesPosition, fileType, configCLI } = options;
+  let { creationPath, readFilePath, componentName, config, filesPosition, fileType, configCLI } = options;
+  const { mDS, structure } = config;
   const componentInFolder = new RegExp(`${componentName}/${componentName}`, 'i');
   // if the file is created in a folder that has the same name, we want the file to be named index
   creationPath = creationPath.replace(componentInFolder, `${componentName}/index`);
@@ -71,16 +53,29 @@ exports.createFile = options => new Promise((resolve, reject) => {
   fs.open(creationPath, 'wx', err => {
     if(err) return reject(err);
 
-    let content = fs.readFileSync(readFilePath).toString(); // get a string of the template
+    let content = readFilePath ? fs.readFileSync(readFilePath).toString() : ''; // get a string of the template
     content = content.replace(/_component_/g, componentName);
     if(configCLI.mDS === false || !mDS) content = content
       .replace(/import { mapDynamicState } from 'map-dynamic-state';/g, '')
       .replace(/mapDynamicState\('reducerName: prop'\);/, 'state => ({\n\n});\n');
 
-    content = findRelativePath('component', 'interface', options, content);
-    content = findRelativePath('component', 'style', options, content);
-    content = findRelativePath('test', 'component', options, content);
-    content = findRelativePath('container', 'component', options, content);
+    const relativePathToFind = {
+      length: 0,
+      from: [],
+      to: []
+    };
+    content.replace(/(_.+To.+_)/gi, match => {
+      const [from, to] = match.split('_')[1].split(/To/i);
+      relativePathToFind.from.push(from.toLowerCase());
+      relativePathToFind.to.push(to.toLowerCase());
+      ++relativePathToFind.length;
+      return match;
+    });
+    for (let i = 0; i < relativePathToFind.length; i++) {
+      const from = relativePathToFind.from[i];
+      const to = relativePathToFind.to[i];
+      content = findRelativePath(from, to, options, content);
+    }
 
     fs.writeFileSync(creationPath, content, 'utf-8', err => { if(err) return reject(err) });
     resolve();
@@ -88,7 +83,8 @@ exports.createFile = options => new Promise((resolve, reject) => {
 });
 
 const findRelativePath = (from, to, options, content) => {
-  const { structure, filesPosition, creationPath, componentName, style, fileType, configCLI } = options;
+  const { config, filesPosition, creationPath, componentName, fileType, configCLI } = options;
+  const { structure, style } = config;
   const toFilePosition = filesPosition[to];
   const fromFilePosition = filesPosition[from];
   const { parents: toParents, folder: toFolder } = toFilePosition;
@@ -123,8 +119,8 @@ const findRelativePath = (from, to, options, content) => {
   content = content.replace(new RegExp(`_${from}To${to}_`, 'gi'), path);
   content = content.replace(new RegExp(`.//${componentName}`, 'g'), './index');
   content = content.replace(/\.scss/, `.${style}`);
-  if(to === 'interface') {
-    content = content.replace(/'\.\/'/, '\'./index.interface\'');
+  if(to !== 'component') {
+    content = content.replace(/'\.\/'/, `'./index.${to}'`);
   } else if(fileType !== 'component' && fileType !== 'style') {
     const { parents } = filesPosition[fileType];
     if(parents.length > 0 && howManyFile(structures[configCLI.structure] || structure, parents) > 1) {
@@ -178,11 +174,10 @@ const getConfigFromCommand = command => {
   if(scriptsType) config.scriptsType = scriptsType;
   // the value can be a string, so we parse it to get either true or false, or string if the value is wrong
   // but we only want a boolean
-  if(typeof JSON.parse(tests) === 'boolean') config.tests = JSON.parse(tests);
-  if(typeof JSON.parse(mDS) === 'boolean') config.mDS = JSON.parse(mDS);
+  if(typeof tests === 'string' && typeof JSON.parse(tests) === 'boolean') config.tests = JSON.parse(tests);
+  if(typeof mDS === 'string' && typeof JSON.parse(mDS) === 'boolean') config.mDS = JSON.parse(mDS);
   if(style) config.style = style;
   if(structure) config.structure = structure;
-  console.log(config.structure)
 
   return config;
 }

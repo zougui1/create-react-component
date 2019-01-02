@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { pascalCasify, getPreviousDir, createFile, getConfig, isConfigValid, getConfigFromCommand } = require('./utils');
+const { pascalCasify, getPreviousDir, createFile, getConfig, getConfigFromCommand } = require('./utils');
 const createFolder = require('./create-folder');
 
 // all the pre-defined file type
@@ -31,6 +31,8 @@ const findFilePosition = (structure, search, parents = []) => new Promise((resol
       else if(element === search) return resolve(currentPositions);
     }
   }
+  // 500 ms is enough to find a value if it exist
+  setTimeout(reject, 500, `${search} not found in the config's structure`);
 });
 
 // we stock the files position in an object and return it if there's the expected amount of data
@@ -48,9 +50,11 @@ const tempFilesPositionStore = expectingFilesPositionNumber => {
 }
 
 // find all the files position
-const findAllFilesPosition = structure => new Promise((resolve, reject) => {
-  const store = tempFilesPositionStore(allFilesType.length);
-  allFilesType.forEach(fileType => {
+const findAllFilesPosition = (structure, filesTypes, customFiles) => new Promise((resolve, reject) => {
+  filesTypes = filesTypes || allFilesType;
+  filesTypes = filesTypes.concat(customFiles);
+  const store = tempFilesPositionStore(filesTypes.length);
+  filesTypes.forEach(fileType => {
     findFilePosition(structure, fileType)
       .then(filePosition => {
         if(store.addFilePosition(filePosition)) return resolve(store.getFilesPosition());
@@ -59,31 +63,50 @@ const findAllFilesPosition = structure => new Promise((resolve, reject) => {
   });
 });
 
+const isConfigValid = (config, reject) => {
+  const { scriptsType, tests, style, structure } = config;
+  let errors = [];
+  if(config.constructor.name !== 'Object') errors.push('The CLI must be initialized');
+  if(!scriptsType || !/(j|t)sx/.test(scriptsType)) {
+    errors.push('The rule "scriptsType" is wrong, it must contains: "tsx" OR "jsx"');
+  }
+  if(tests === undefined || tests === null || typeof tests !== 'boolean') {
+    errors.push('The rule "tests" is wrong, it must contains true OR false');
+  }
+  if(!style || typeof style !== 'string') {
+    errors.push('The rule "style" is wrong, it must contains a non-empty string');
+  }
+  if(!structure || structure.constructor.name !== 'Object') {
+    errors.push('The rule "structure" is wrong, it must be a literal object');
+  }
+  if(errors.length > 0) reject(errors);
+}
+
+// determines which files to create
 module.exports = (component, command) => new Promise((resolve, reject) => {
   const configCLI = getConfigFromCommand(command);
   let files = ['style', 'component']; // this contains all the files type that are going to be created
   const config = getConfig();
   isConfigValid(config, reject); // if the config is invalid we do not want to continue
-  const { structure, style } = config;
-  findAllFilesPosition(configCLI.structure || structure)
+  const customFiles = Array.isArray(config.customFiles) ? config.customFiles : [];
+  findAllFilesPosition(configCLI.structure || config.structure, null, customFiles)
     .then(filesPosition => {
       component.name = component.name.replace(/\\/g, '/');
       component.name = /src\/components/.test(component.name)
         ? component.name
         : `src/components/${component.name}`;
 
-      if(configCLI.tests !== false && config.tests === true) files.push('test');
+      if(configCLI.tests) files.push('test');
+      else if(config.tests === true) files.push('test');
       // contains is defined only if the value is an array (e.g. "component": ["component", "container"])
       if(!filesPosition.container.contains) files.push('container');
       if(configCLI.scriptsType !== 'jsx' && config.scriptsType === 'tsx' && !filesPosition.interface.contains) files.push('interface');
+      files = files.concat(customFiles);
 
       const options = {
         componentType: component.type,
-        scriptsType: config.scriptsType,
-        mDS: config.MDS,
-        structure,
+        config,
         filesPosition,
-        style,
         configCLI,
       };
       creation(component.name, options, files).then(resolve).catch(reject);
@@ -91,6 +114,7 @@ module.exports = (component, command) => new Promise((resolve, reject) => {
     .catch(reject);
 });
 
+// create all the files specified in "files"
 const creation = (componentName, options, files) => new Promise((resolve, reject) => {
   if(files.length === 0) return resolve();
   options.fileType = files[0];
@@ -100,8 +124,9 @@ const creation = (componentName, options, files) => new Promise((resolve, reject
   }).catch(reject);
 });
 
+// create one file
 const createComponent = (path, options) => {
-  const { fileType, mDS, structure, filesPosition, style, configCLI } = options;
+  const { fileType, filesPosition, config, configCLI } = options;
   path = correctPath(path, options); // find the correct path where the file will be created
   let pathParts = path.split(/[/\\]/);
   const componentName = pascalCasify(/index/i.test(pathParts[pathParts.length - 1])
@@ -117,15 +142,17 @@ const createComponent = (path, options) => {
   pathParts[pathParts.length - 1] = componentName;
   const creationPath = pathParts.join('/');
 
+  const customTemplate = config.templates[fileType];
+  const customTemplatesPath = config.templatesPath || '.';
+  if(customTemplate) finalTemplatePath = `${process.cwd()}/${customTemplatesPath}/${customTemplate}`;
+  if(!inArray(fileType, allFilesType) && !config.templates[fileType]) finalTemplatePath = '';
   const createFileOptions = {
     creationPath: `${creationPath}.${ext}`,
     readFilePath: finalTemplatePath,
     fileType,
     componentName,
-    mDS,
-    structure,
+    config,
     filesPosition,
-    style,
     configCLI,
   };
   return new Promise((resolve, reject) => {
@@ -138,6 +165,7 @@ const createComponent = (path, options) => {
   });
 }
 
+// get the correct path where the files will be created
 const correctPath = (path, options) => {
   const { fileType, filesPosition } = options;
   let correctPath = path;
@@ -149,8 +177,10 @@ const correctPath = (path, options) => {
   return correctPath;
 }
 
+// get the templates path
 const getTemplatePath = options => {
-  let { componentType, scriptsType, fileType, filesPosition, configCLI } = options;
+  let { componentType, fileType, filesPosition, config, configCLI } = options;
+  const { scriptsType } = config;
 
   let path;
   if(fileType === 'style') return 'style';
@@ -168,8 +198,12 @@ const getTemplatePath = options => {
   return path;
 }
 
+
+// get the files extension
 const getExt = options => {
-  const { scriptsType, fileType, style, configCLI } = options;
+  const { config, fileType, configCLI } = options;
+  const { scriptsType, style } = config;
+
   let ext;
   if(fileType === 'style') ext = configCLI.style || style;
   else if(configCLI.scriptsType === 'jsx' || scriptsType === 'jsx') ext = 'js';
