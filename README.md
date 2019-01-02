@@ -42,7 +42,7 @@ src
       index.test.js => if tests are activated
 ```
 
-### strictSeparation
+### strictseparation
 ```
 src
   components
@@ -88,3 +88,132 @@ src
           index.test.js => if tests are activated
 ```
 > note: "component", "container", "style", "interface" and "test" are all **required**
+
+## custom file creation
+
+You can add files that will be created when create a component and add them into the structure like so:
+
+```json
+"customFiles": ["newFile", "something"],
+"structure": {
+  "components": {
+    "component": ["component", "container"],
+    "interface": "interface",
+    "style": "style",
+    "test": "test",
+    "newFile": "newFile",
+    "something": "something"
+  }
+}
+```
+will results with:
+```
+src
+  components
+    MyComponent
+      index.js => the component and the container in the same file (if redux component)
+      index.scss
+      index.test.js => if tests are activated
+      index.newFile.js
+      index.something.js
+```
+
+> note: once a file is added in `customFiles` it is **required** in the structure, the files has a sub-extension *only* if they are in a folder that contains more than 1 file
+
+## custom template
+
+You can add a file to be created, but it doesn't have a template, that's why you can also create your own template, and can also use your own template for the pre-defined files (e.g. "component", "style", etc...)
+just like so:
+```json
+"templates": {
+    "container": "./customTemplates/container.js",
+    "style": "./customTemplates/style.css",
+    "newFile": "./customTemplates/newFile.ts",
+    "something": "./customTemplates/something.js"
+}
+```
+now all the files "container", "style", "newFile", "something" will have their own custom template
+if *all* your templates are in a common folder, you can add a templates path like so:
+```json
+"templatesPath": "./customTemplates",
+"templates": {
+    "container": "./container.js",
+    "style": "./style.css",
+    "newFile": "./newFile.ts",
+    "something": "./subFolder/something.js"
+}
+```
+> note: the templates extension will not influence the created files extension
+
+### get the component's name and a path to another file
+now, there are a few things to know about the templates, what if your generated files need a path to another file, and what if it need the component's name?
+
+you can use some keywords to do it!
+
+#### get the component's name
+if you need to get the component's name inside the files that will be created you can use \_component\_, like so:
+
+template:
+```jsx
+import React from 'react';
+
+const _component_ = () => (
+  <p>_component_ work!</p>
+);
+
+export default _component_;
+```
+will results by this:
+```jsx
+import React from 'react';
+
+const MyComponent = () => (
+  <p>MyComponent work!</p>
+);
+
+export default MyComponent;
+```
+
+#### get the path to another file
+now you want to get the path to another path? you just have to use \_fileToAnotherFile\_
+when "file" will be a file-type (e.g. "component", "style", "container", "customFile", etc...)
+"To" is **required**
+and "AnotherFile" is exactly the same as "file"
+
+for example, if you want to get path in the file "component" to "customFile" you will need to use \_componentToCustomFile\_ like so:
+
+templates:
+
+component:
+```jsx
+import React from 'react';
+import { someFunction } from '_componentToCustomFile_';
+
+const _component_ = () => (
+  <p>{someFunctions()}</p>
+);
+
+export default _component_;
+```
+customFile:
+```jsx
+export const someFunction = () => _component_ work!;
+```
+
+will results by:
+
+component:
+```jsx
+import React from 'react';
+import { someFunction } from './path/from/MyComponent/to/customFile';
+
+const MyComponent = () => (
+  <p>{someFunctions()}</p>
+);
+
+export default MyComponent;
+```
+customFile:
+```jsx
+export const someFunction = () => MyComponent work!;
+```
