@@ -1,5 +1,5 @@
 # Create-react-component
-create-react-component is a CLI that create component for react
+create-react-component is a CLI that create component files
 
 ## Installation
 ```
