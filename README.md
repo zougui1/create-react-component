@@ -276,3 +276,81 @@ src
 ```
 
 You can also set `defaultFiles` to false and do not create any JS file.
+
+## examples
+
+### commands
+Some commands examples
+
+initiate the CLI with tests, with tsx files, default structure ("separation") and without the defaultFiles
+`crc init --tests --tsx --defaultFiles=false`
+
+create a stateless component without any test using the "strictseparation" structure
+`crc sl test --tests=false --structure=strictseparation`
+
+### configs
+no test, jsx file (js extension), style in scss, using "separation" structure
+```json
+{
+  "scriptsType": "jsx",
+  "tests": false,
+  "style": "scss",
+  "defaultFiles": true,
+  "structure": {
+    "components": {
+      "component": "component",
+      "container": "container",
+      "interface": "interface",
+      "style": "style",
+      "test": "test"
+    }
+  }
+}
+```
+will results by:
+```
+src
+  components
+    MyComponent
+      index.js
+      index.container.js
+      index.interface.js
+      index.scss
+```
+
+full custom config, with custom templates except for the styles
+```json
+{
+  "scriptsType": "jsx",
+  "tests": true,
+  "style": "less",
+  "defaultFiles": false,
+  "customFiles": ["test", "style", "something.php", "somethingElse.coffee"],
+  "templatesPath": "./templates",
+  "templates": {
+    "test": "./test.js",
+    "something.php": "./something.php",
+    "somethingElse.coffee": "./somethingElse.coffee"
+  },
+  "structure": {
+    "components": {
+      "something": "something.php",
+      "somethingElse": "somethingElse.coffee",
+      "style": "style"
+    },
+    "tests": "test"
+  }
+}
+```
+will results by:
+```
+src
+  components
+    MyComponent
+      index.something.php
+      index.somethingElse.coffee
+      index.less
+  tests
+    MyComponent
+      index.test.js
+```
