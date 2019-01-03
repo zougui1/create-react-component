@@ -156,7 +156,7 @@ const getConfigFromCommand = command => {
   const tests = getOptionValue(command, 'tests', null, true);
   const mDS = getOptionValue(command, 'MDS', null, true);
   const style = getOptionValue(command, 'style', null);
-  const defaultFiles = getOptionValue(command, 'defaultFiles', null);
+  const defaultFiles = getOptionValue(command, 'defaultFiles', null, true);
   const choosenStructure = getOptionValue(command, 'structure');
   const structure = structures[choosenStructure];
   const config = {};
@@ -173,5 +173,16 @@ const getConfigFromCommand = command => {
   return config;
 }
 
+const initialization = command => {
+  const config = getConfigFromCommand(command);
+  config.scriptsType = config.scriptsType || 'jsx';
+  if(config.tests === undefined) config.tests = false;
+  config.style = config.style || 'scss';
+  if(config.defaultFiles === undefined) config.defaultFiles = true;
+  config.structure = config.structure || structures.separation;
+  return config;
+}
+
 exports.getOptionValue = getOptionValue;
 exports.getConfigFromCommand = getConfigFromCommand;
+exports.initialization = initialization;

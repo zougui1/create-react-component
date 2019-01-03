@@ -92,7 +92,6 @@ module.exports = (component, command) => new Promise((resolve, reject) => {
   const customFiles = Array.isArray(config.customFiles) ? config.customFiles : [];
   let defaultFiles;
   if(configCLI.defaultFiles !== true && (configCLI.defaultFiles === false || config.defaultFiles === false)) defaultFiles = [];
-  console.log(defaultFiles)
   findAllFilesPosition(configCLI.structure || config.structure, defaultFiles, customFiles)
     .then(filesPosition => {
       component.name = component.name.replace(/\\/g, '/');
@@ -151,10 +150,14 @@ const createComponent = (path, options) => {
   pathParts[pathParts.length - 1] = componentName;
   const creationPath = pathParts.join('/');
 
-  const customTemplate = config.templates[fileType];
-  const customTemplatesPath = config.templatesPath || '.';
-  if(customTemplate) finalTemplatePath = `${process.cwd()}/${customTemplatesPath}/${customTemplate}`;
-  if(!inArray(fileType, allFilesType) && !config.templates[fileType]) finalTemplatePath = '';
+  let customTemplate;
+  let customTemplatesPath;
+  if(config.templates) {
+    customTemplate = config.templates[fileType];
+    customTemplatesPath = config.templatesPath || '.';
+    if(customTemplate) finalTemplatePath = `${process.cwd()}/${customTemplatesPath}/${customTemplate}`;
+    if(!inArray(fileType, allFilesType) && !config.templates[fileType]) finalTemplatePath = '';
+  }
   const createFileOptions = {
     ...options,
     creationPath: `${creationPath}.${ext}`.replace(/\.$/, ''),
