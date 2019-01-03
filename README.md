@@ -13,6 +13,7 @@ commands:
 * sf: create a stateful component
 * rsl: create a redux stateless component
 * rsf: create a redux stateful component
+
 flags:
 * --tsx: pass the scripts type to tsx, default: false (jsx)
 * --tests: make test file when creating a component, default: false
