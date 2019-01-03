@@ -26,6 +26,7 @@ const program = new commander.Command(packageJson.name)
   .option('--tsx', 'set the scripts to tsx')
   .option('--tests', 'create testing file')
   .option('--structure', 'set the components structure')
+  .option('--defaultFiles', 'set if the default files must be created or no')
   .allowUnknownOption()
   .parse(process.argv);
 // commander simplify the use of the arguments

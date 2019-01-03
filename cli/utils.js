@@ -156,6 +156,7 @@ const getConfigFromCommand = command => {
   const tests = getOptionValue(command, 'tests', null, true);
   const mDS = getOptionValue(command, 'MDS', null, true);
   const style = getOptionValue(command, 'style', null);
+  const defaultFiles = getOptionValue(command, 'defaultFiles', null);
   const choosenStructure = getOptionValue(command, 'structure');
   const structure = structures[choosenStructure];
   const config = {};
@@ -165,6 +166,7 @@ const getConfigFromCommand = command => {
   // but we only want a boolean
   if(typeof tests === 'string' && typeof JSON.parse(tests) === 'boolean') config.tests = JSON.parse(tests);
   if(typeof mDS === 'string' && typeof JSON.parse(mDS) === 'boolean') config.mDS = JSON.parse(mDS);
+  if(defaultFiles === 'false' || defaultFiles === 'true') config.defaultFiles = JSON.parse(defaultFiles);
   if(style) config.style = style;
   if(structure) config.structure = structure;
 

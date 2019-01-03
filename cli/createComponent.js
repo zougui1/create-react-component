@@ -85,23 +85,32 @@ const isConfigValid = (config, reject) => {
 // determines which files to create
 module.exports = (component, command) => new Promise((resolve, reject) => {
   const configCLI = getConfigFromCommand(command);
-  let files = ['style', 'component']; // this contains all the files type that are going to be created
+  let files = []; // this contains all the files type that are going to be created
   const config = getConfig();
   isConfigValid(config, reject); // if the config is invalid we do not want to continue
+
   const customFiles = Array.isArray(config.customFiles) ? config.customFiles : [];
-  findAllFilesPosition(configCLI.structure || config.structure, null, customFiles)
+  let defaultFiles;
+  if(configCLI.defaultFiles !== true && (configCLI.defaultFiles === false || config.defaultFiles === false)) defaultFiles = [];
+  console.log(defaultFiles)
+  findAllFilesPosition(configCLI.structure || config.structure, defaultFiles, customFiles)
     .then(filesPosition => {
       component.name = component.name.replace(/\\/g, '/');
       component.name = /src\/components/.test(component.name)
         ? component.name
         : `src/components/${component.name}`;
 
-      if(configCLI.tests) files.push('test');
-      else if(config.tests === true) files.push('test');
-      // contains is defined only if the value is an array (e.g. "component": ["component", "container"])
-      if(!filesPosition.container.contains) files.push('container');
-      if(configCLI.scriptsType !== 'jsx' && config.scriptsType === 'tsx' && !filesPosition.interface.contains) files.push('interface');
-      files = files.concat(customFiles);
+      if(configCLI.defaultFiles !== false && (configCLI.defaultFiles === true || config.defaultFiles)) {
+        files.push('component');
+        files.push('style');
+
+        if(configCLI.tests !== false && (configCLI.tests === true || config.tests === true)) files.push('test');
+        // contains is defined only if the value is an array (e.g. "component": ["component", "container"])
+        if(!filesPosition.container.contains) files.push('container');
+        if(configCLI.scriptsType !== 'jsx' && config.scriptsType === 'tsx' && !filesPosition.interface.contains) files.push('interface');
+      }
+
+      files = files.concat(customFiles).concat(defaultFiles || []);
 
       const options = {
         componentType: component.type,
@@ -126,7 +135,7 @@ const creation = (componentName, options, files) => new Promise((resolve, reject
 
 // create one file
 const createComponent = (path, options) => {
-  const { fileType, filesPosition, config, configCLI } = options;
+  const { fileType, config } = options;
   path = correctPath(path, options); // find the correct path where the file will be created
   let pathParts = path.split(/[/\\]/);
   const componentName = pascalCasify(/index/i.test(pathParts[pathParts.length - 1])
@@ -147,13 +156,10 @@ const createComponent = (path, options) => {
   if(customTemplate) finalTemplatePath = `${process.cwd()}/${customTemplatesPath}/${customTemplate}`;
   if(!inArray(fileType, allFilesType) && !config.templates[fileType]) finalTemplatePath = '';
   const createFileOptions = {
-    creationPath: `${creationPath}.${ext}`,
+    ...options,
+    creationPath: `${creationPath}.${ext}`.replace(/\.$/, ''),
     readFilePath: finalTemplatePath,
-    fileType,
     componentName,
-    config,
-    filesPosition,
-    configCLI,
   };
   return new Promise((resolve, reject) => {
     fs.exists(previousDir, exists => {
@@ -204,7 +210,8 @@ const getExt = options => {
   const { config, fileType, configCLI } = options;
   const { scriptsType, style } = config;
 
-  let ext;
+  let ext = fileType.replace(fileType.split('.')[0], '');
+  if(ext) return '';
   if(fileType === 'style') ext = configCLI.style || style;
   else if(configCLI.scriptsType === 'jsx' || scriptsType === 'jsx') ext = 'js';
   else ext = 'tsx';
