@@ -9,17 +9,23 @@ $ npm install -g create-react-component
 ## commands
 commands:
 * init: add an npm script with its path. e.g. `"crc": "node /path/to/the/cli"`, default config: the scripts are in jsx, the styles in scss, there is no test and the structure is "separation", _4 args_
-  * --tsx: pass the scripts type to tsx, default: false (jsx)
-  * --tests: make test file when creating a component, default: false
-  * --style: choose a style extension, default: scss
-  * --structure: choose a structure over the pre-defined ones, default: separation
-  * --defaultFiles: set if the default files must be created or no, default: true
-* c: create a stateless component
 * sl: create a stateless component
 * sf: create a stateful component
 * rsl: create a redux stateless component
 * rsf: create a redux stateful component
+flags:
+* --tsx: pass the scripts type to tsx, default: false (jsx)
+* --tests: make test file when creating a component, default: false
+* --style: choose a style extension, default: scss
+* --structure: choose a structure over the pre-defined ones, default: separation
+* --defaultFiles: set if the default files must be created or no, default: true
 
+some examples:
+initiate the CLI with tests, with tsx files, default structure ("separation") and without the defaultFiles
+`crc init --tests --tsx --defaultFiles=false`
+
+create a stateless component without any test using the "strictseparation" structure
+`crc sl test --tests=false --structure=strictseparation`
 
 
 ## pre-defined structures
@@ -279,16 +285,6 @@ You can also set `defaultFiles` to false and do not create any JS file.
 
 ## examples
 
-### commands
-Some commands examples
-
-initiate the CLI with tests, with tsx files, default structure ("separation") and without the defaultFiles
-`crc init --tests --tsx --defaultFiles=false`
-
-create a stateless component without any test using the "strictseparation" structure
-`crc sl test --tests=false --structure=strictseparation`
-
-### configs
 no test, jsx file (js extension), style in scss, using "separation" structure
 ```json
 {
