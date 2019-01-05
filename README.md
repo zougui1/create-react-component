@@ -7,26 +7,21 @@ $ npm install -g create-react-component
 ```
 
 ## commands
-commands:
-* init: add an npm script with its path. e.g. `"crc": "node /path/to/the/cli"`, default config: the scripts are in jsx, the styles in scss, there is no test and the structure is "separation", _4 args_
-* sl: create a stateless component
-* sf: create a stateful component
-* rsl: create a redux stateless component
-* rsf: create a redux stateful component
+crc \<command\>
 
-flags:
-* --tsx: pass the scripts type to tsx, default: false (jsx)
-* --tests: make test file when creating a component, default: false
-* --style: choose a style extension, default: scss
-* --structure: choose a structure over the pre-defined ones, default: separation
-* --defaultFiles: set if the default files must be created or no, default: true
+**commands:**
+  * init: add an npm script with its path. e.g. `"crc": "node /path/to/the/cli"`, default config: the scripts are in jsx, the styles in scss, there is no test and the structure is "separation", _4 args_
+  * sl: create a stateless component
+  * sf: create a stateful component
+  * rsl: create a redux stateless component
+  * rsf: create a redux stateful component
 
-some examples:
-initiate the CLI with tests, with tsx files, default structure ("separation") and without the defaultFiles
-`crc init --tests --tsx --defaultFiles=false`
-
-create a stateless component without any test using the "strictseparation" structure
-`crc sl test --tests=false --structure=strictseparation`
+**flags:**
+  * --tsx: pass the scripts type to tsx, default: false (jsx)
+  * --tests: make test file when creating a component, default: false
+  * --style: choose a style extension, default: scss
+  * --structure: choose a structure over the pre-defined ones, default: separation
+  * --defaultFiles: set if the default files must be created or no, default: true
 
 
 ## pre-defined structures
@@ -68,7 +63,7 @@ src
 ## custom structure
 
 you can make your own structure by editing the existing one in `crc-config.json`
-for example, this:
+for example:
 ```json
 {
   "structure": {
@@ -87,7 +82,7 @@ for example, this:
   }
 }
 ```
-will results by this
+will results by:
 ```
 src
   components
@@ -121,7 +116,7 @@ You can add files that will be created when create a component and add them into
   }
 }
 ```
-will results with:
+will results by:
 ```
 src
   components
